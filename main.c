@@ -39,10 +39,10 @@ volatile uint8_t hour_button_held = 0;	   // Flags hour button as held
 const uint8_t brightness_levels[] = {254, 248, 156, 0}; // Define brightness levels (in reversed order)
 
 void setup_timer2() {
-    // Activate asynchronous mode for Timer2 with external clock
+    // Activate asynchronous mode for Timer2 with external clock (instead of synchronus)
     ASSR |= (1 << AS2);
 
-    // Set Timer2 to Normal mode
+    // Set Timer2 to Normal mode (instead of CTC or PWM)
     TCCR2A = 0;                     	    // Normal mode
     TCCR2B = (1 << CS22) | (1 << CS20);     // Prescaler = 128
 
