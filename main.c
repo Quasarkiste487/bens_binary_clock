@@ -1,4 +1,23 @@
-//working code copy - 29.12.24
+/*
+binary_clock by Ben Kaden
+working condition 08.01.25
+includes sleepmode, turned off peripherals and scaleable PWM
+*/
+
+/*
+!! adjust to your need: !!
+PWM katodes on PB1/PB2
+PWM/sleep button on PD7
+hours on PD6
+minutes on PB0
+*/
+
+/*
+compile code via avrdude:
+1:avr-gcc -mmcu=atmega48 -DF_CPU=1000000UL -Wcpp -Os -o main.elf main.c
+2:avr-objcopy -O ihex -R .eeprom main.elf main.hex
+3:avrdude -c usbasp -p m48 -U flash:w:main.hex:i
+*/
 
 #include <avr/io.h>
 #include <avr/interrupt.h>
@@ -6,26 +25,26 @@
 #include <avr/sleep.h>
 
 
-volatile uint8_t seconds = 0;
+volatile uint8_t seconds = 50;		   // set to see working clokc update
 volatile uint8_t minutes = 30;
 volatile uint8_t hours = 12;
 volatile uint8_t brightness_stage = 0; 	   // Tracks the current brightness stage (0-3)
 volatile uint8_t pwm_hold_timer = 0;       // Tracks how long the brightness button is held
 volatile uint8_t pwm_button_held = 0;      // Flag indicating if the button is currently held
-volatile uint8_t min_hold_timer = 0;
-volatile uint8_t min_button_held = 0;
-volatile uint8_t hour_hold_timer = 0;
-volatile uint8_t hour_button_held = 0;
+volatile uint8_t min_hold_timer = 0;	   // Times how long the min button is hold
+volatile uint8_t min_button_held = 0;	   // Flags min button as held
+volatile uint8_t hour_hold_timer = 0;	   // Times how long the hour button is hold
+volatile uint8_t hour_button_held = 0;	   // Flags hour button as held
 
-const uint8_t brightness_levels[] = {254, 248, 156, 0}; // Define brightness levels
+const uint8_t brightness_levels[] = {254, 248, 156, 0}; // Define brightness levels (in reversed order)
 
 void setup_timer2() {
     // Activate asynchronous mode for Timer2 with external clock
     ASSR |= (1 << AS2);
 
     // Set Timer2 to Normal mode
-    TCCR2A = 0;                     // Normal mode
-    TCCR2B = (1 << CS22) | (1 << CS20); // Prescaler = 128
+    TCCR2A = 0;                     	    // Normal mode
+    TCCR2B = (1 << CS22) | (1 << CS20);     // Prescaler = 128
 
     // Enable Timer2 Overflow interrupt
     TIMSK2 = (1 << TOIE2);
@@ -49,6 +68,12 @@ void setup_ports() {
     // Hours (PORTC: PC0 to PC4) and Minutes (PORTD: PD0 to PD5) as outputs
     DDRC |= 0x1F;  // PC0 to PC4 for hours
     DDRD |= 0x3F;  // PD0 to PD5 for minutes
+
+    // Deaktiviere ADC, USART, SPI, Timer und TWI
+    PRR |= (1 << PRADC) | (1 << PRUSART0) | (1 << PRSPI) | (1 << PRTIM0) | (1 << PRTWI);
+
+    DDRB = 0x00; // Alle Pins von PORTB als Eingang
+    PORTB = 0xFF; // Pull-Up aktivieren
 
     // Turn off LEDs initially
     PORTC &= ~0x1F; // Hours LEDs off
